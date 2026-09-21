@@ -1,0 +1,22 @@
+{
+  "name": "@mochidasu/web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@mochidasu/common-shadcn": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-query-devtools": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "lucide-react": "catalog:",
+    "oidc-client-ts": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-oidc-context": "catalog:",
+    "tailwindcss": "catalog:"
+  },
+  "devDependencies": {
+    "@smithy/types": "catalog:",
+    "@types/node": "catalog:"
+  }
+}
