@@ -4,7 +4,7 @@ The `extractor` agent: a Strands agent (Python 3.14, FastAPI) that runs on Amazo
 
 ## Request and response
 
-`POST /invocations` with `images[]` (base64 JPEG/PNG/WebP/GIF, up to 6, plus `label` and `years_ago`) and/or `texts[]` (pasted messages). The response is a JSON Lines stream. The final line is `{"type":"result","result":{...}}` containing:
+`POST /invocations` with `images[]` (base64 JPEG/PNG/WebP/GIF, up to 6, plus `label` and `years_ago`) and/or `texts[]` (pasted messages), and `language` (`ja` or `en`: the language for trait labels and questions; quotes are never translated). The response is a JSON Lines stream. The final line is `{"type":"result","result":{...}}` containing:
 
 - `fragments[]`: every message, quoted verbatim, with `keep`, `reason`, `writer` and `confidence`
 - `traits[]`: traits mentioned by two or more writers, with `fragment_indexes` and `questions`

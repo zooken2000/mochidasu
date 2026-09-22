@@ -98,10 +98,12 @@ claude mcp add-json aws-mcp '{"type":"stdio","command":"uvx","args":["mcp-proxy-
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
-| 「読み取りに失敗しました（…を読み込めませんでした）」 | 画像が壊れている、または対応していない形式 | JPEG / PNG で保存し直す。HEIC（iPhone の標準形式）はブラウザで自動的に JPEG に変換する（`lib/image.ts`、heic2any） |
+| 本番だけ「読み取りに失敗しました（…を読み込めませんでした）」 | 画面の Content-Security-Policy が `blob:` の画像を禁止している（ローカルの `pnpm nx dev` には CSP が付かないので起きない） | `packages/common/constructs/src/core/static-website.ts` の `img-src` に `blob:` があるか確認する（修正済み） |
+| Chrome で HEIC を選ぶと30秒後に「変換できませんでした」 | 変換ライブラリが `unsafe-eval` を必要とし、CSP で許していない（意図どおり） | JPEG で保存し直す、または Safari を使う |
 | 本番だけ `Unknown response status 403` | 標準フローのゲストの鍵に AWS のスコープダウンポリシーが付き、AgentCore を呼べない | Basic フローで鍵をもらう（`lib/guest-credentials.ts`、`GuestIdentity` の `allowClassicFlow`） |
 | 本番で `424 Runtime initialization time exceeded` | エージェントの起動が30秒を超えた | CloudWatch の `/aws/bedrock-agentcore/runtimes/…` を見る。依存を減らしたあとは `dist/packages/agent` を消してから作り直す |
 | 本番で `424 Runtime initialization time exceeded`、ログに `/var/task/bin/opentelemetry-instrument: … .venv/bin/python3: No such file or directory` | `uv pip install --target` が手元の Python のパスを起動スクリプトに書き込む（パスに空白があると `#!/bin/sh` 形式になる） | `bundle-arm` の最後で `scripts/fix_shebangs.py` が `#!/usr/bin/env python3` に書き換える |
+| スタックが `UPDATE_FAILED`（`Replacement type updates not supported on stack with disable-rollback`） | `--express` で AppConfig の作り直しが必要な更新をした | 前回成功したテンプレートで EXPRESS のまま更新して `UPDATE_COMPLETE` に戻し、`--express` なしでデプロイし直す（`deploy-sandbox` は修正済み） |
 | エージェントのログに `Unable to locate credentials` | そのターミナルに AWS の認証情報がない | `AWS_PROFILE` と `AWS_REGION` を設定してから起動し直す |
 | `AccessDeniedException` | そのリージョンでモデルアクセスがない | Bedrock コンソールで Claude Sonnet 4.6 を有効にする |
 | 共通点が出ない | 書き手が1人しかいない | 書き手の違う紙やメッセージを足す（2人以上が触れた特徴だけを出す仕様） |

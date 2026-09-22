@@ -11,11 +11,18 @@ from .verify import verify
 
 DEFAULT_EXTRACT_PROMPT = "これらの素材から、私について書かれた言葉を読み取り、強みの候補をまとめてください。"
 
+# 画面が英語のとき。引用（fragments.text）は翻訳させない
+ENGLISH_OUTPUT_NOTE = (
+    "画面は英語で表示します。traits の label と questions は英語で書いてください。"
+    "fragments の text は原文のまま写し、翻訳しないでください。"
+)
+
 
 class InvokeInput(BaseModel):
     prompt: str = Field(default="", max_length=10000)
     images: list[ImageInput] = Field(default_factory=list, max_length=MAX_IMAGES)
     texts: list[TextInput] = Field(default_factory=list, max_length=MAX_TEXTS)
+    language: Literal["ja", "en"] = "ja"
 
 
 class StreamChunk(BaseModel):
@@ -49,6 +56,8 @@ def build_content(input: InvokeInput) -> tuple[list[dict[str, Any]], dict[int, s
     prompt = input.prompt.strip() or (DEFAULT_EXTRACT_PROMPT if n > 0 else "")
     if prompt:
         content.append({"text": prompt})
+    if n > 0 and input.language == "en":
+        content.append({"text": ENGLISH_OUTPUT_NOTE})
     return content, texts_by_source
 
 

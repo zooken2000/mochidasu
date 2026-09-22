@@ -20,3 +20,8 @@
 | 14 | ゲストの鍵は Cognito の Basic（クラシック）フローでもらう | 標準（Enhanced）フローでは未認証 ID に AWS のスコープダウンポリシーが付き、`bedrock-agentcore:InvokeAgentRuntime` が許されない（本番で 403）。Basic フローならゲスト用ロールの権限（このエージェントの呼び出しだけ）がそのまま効く | 標準フローのまま、API Gateway + Lambda を挟む |
 | 15 | 使っていない `strands-agents-tools` を依存から外す | 配布物が 190MB → 108MB になり、AgentCore の起動（30秒以内）に余裕を持たせる | — |
 | 16 | 配布物の起動スクリプトの先頭行を `#!/usr/bin/env python3` に書き換える（`fix_shebangs.py`） | 手元の `.venv` のパスが焼き込まれ、AgentCore で起動できなかった（CloudWatch で確認）。エントリポイントは雛形のまま `opentelemetry-instrument` を使い、トレースを残す | `python -m opentelemetry.instrumentation.auto_instrumentation`（このモジュールは `-m` で実行できない）、OTel を外す |
+| 17 | `deploy-sandbox` から `--express` を外す | `--express` は失敗しても元に戻さない（disable-rollback）。AppConfig の設定は中身が変わると作り直しになり、この組み合わせで UPDATE_FAILED になって抜けられなくなった | `--express` のまま使う（速いが、設定の変更で毎回止まる） |
+| 18 | 画面の Content-Security-Policy に `img-src blob:`・`worker-src blob:`・Google Fonts を足す。`unsafe-eval` は足さない | 本番だけ写真を読み込めなかった（選んだ写真を `blob:` の画像として縮小しているため）。書体も読み込めていなかった。HEIC の変換ライブラリは `unsafe-eval` も必要とするが、設定を緩めない方を選んだ | `unsafe-eval` を許可して Chrome でも HEIC を変換する |
+| 19 | HEIC は Safari ではそのまま、Chrome では JPEG で保存し直してもらう | 18 の結果。変換が止まったままにならないよう、30秒で打ち切ってエラーを出す | サーバー側で変換する（依存と送るサイズが増える） |
+| 20 | サンプルを専用の画面（`/sample`）に分け、使い方の画面（`/how`）を作る | 自分の結果を出すとサンプルが上書きされていた。審査員に URL で案内できる | 結果画面を1つのまま切り替える |
+| 21 | 画面を日本語と英語に対応。言語は `?lang` で持ち、既定はブラウザの言語。英語のときは強みの候補と問いかけも英語、引用は翻訳しない | 審査は英語。英語版の URL をそのまま渡せる。引用を訳すと「言い換えない」に反する | 画面は日本語のみ（当初の方針）、ブラウザに言語を保存する |

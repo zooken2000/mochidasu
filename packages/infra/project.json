@@ -67,7 +67,7 @@
       "dependsOn": ["^assemble", "compile"],
       "options": {
         "cwd": "{projectRoot}",
-        "command": "cdk deploy --require-approval=never \"mochidasu-infra-sandbox/**\" --express"
+        "command": "cdk deploy --require-approval=never \"mochidasu-infra-sandbox/**\""
       }
     },
     "destroy": {

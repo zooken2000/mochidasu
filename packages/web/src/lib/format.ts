@@ -1,3 +1,4 @@
+import { type Lang, MESSAGES } from './i18n';
 import {
   type Fragment,
   findSource,
@@ -13,17 +14,17 @@ export const summarize = (fragments: Fragment[]) => {
 };
 
 /** 持ち出し用のプレーンテキスト（メモアプリなどに貼る想定） */
-export const toPlainText = (reading: Reading): string =>
-  reading.fragments
+export const toPlainText = (reading: Reading, lang: Lang = 'ja'): string => {
+  const t = MESSAGES[lang].plain;
+  return reading.fragments
     .filter((f) => f.keep)
     .map((f) => {
-      const s = findSource(reading, f.sourceId);
-      const by = f.writer
-        ? `${f.writer}（${s.label}・${whenLabel(s.yearsAgo)}）`
-        : `${s.label}・${whenLabel(s.yearsAgo)}`;
-      return `「${f.text}」\n　— ${by}`;
+      const s = findSource(reading, f.sourceId, lang);
+      const by = t.by(f.writer, s.label, whenLabel(s.yearsAgo, lang));
+      return `${t.quote(f.text)}\n　— ${by}`;
     })
     .join('\n\n');
+};
 
 /** 強みの候補の根拠を、古い順に並べて期間をまとめる */
 export const traitEvidence = (trait: Trait, reading: Reading) => {

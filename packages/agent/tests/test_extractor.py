@@ -6,7 +6,13 @@ import pytest
 from pydantic import ValidationError
 
 from mochidasu_agent.extractor import main
-from mochidasu_agent.extractor.main import DEFAULT_EXTRACT_PROMPT, InvokeInput, build_content, handle_invoke
+from mochidasu_agent.extractor.main import (
+    DEFAULT_EXTRACT_PROMPT,
+    ENGLISH_OUTPUT_NOTE,
+    InvokeInput,
+    build_content,
+    handle_invoke,
+)
 from mochidasu_agent.extractor.schema import MAX_IMAGE_BYTES, Extraction, ImageInput, TextInput
 
 PNG = base64.b64encode(b"\x89PNG\r\n\x1a\nfake").decode()
@@ -60,6 +66,13 @@ def test_build_content_numbers_images_then_texts():
     assert content[2] == {"text": "【素材1】ピアボーナス（今年）\nいつも助かってます"}
     assert content[-1] == {"text": DEFAULT_EXTRACT_PROMPT}
     assert texts == {1: "いつも助かってます"}
+
+
+def test_build_content_english_asks_for_english_labels():
+    content, _ = build_content(InvokeInput(texts=[TextInput(text="助かりました")], language="en"))
+    assert content[-1] == {"text": ENGLISH_OUTPUT_NOTE}
+    ja, _ = build_content(InvokeInput(texts=[TextInput(text="助かりました")]))
+    assert {"text": ENGLISH_OUTPUT_NOTE} not in ja
 
 
 def test_build_content_text_only_prompt():

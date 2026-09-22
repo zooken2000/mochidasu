@@ -5,6 +5,7 @@
  * 実在の人物・実物の寄せ書きの内容は入れないこと。
  */
 
+import type { Lang } from '../lib/i18n';
 import type { Fragment, Reading, Source, Trait } from '../lib/reading';
 
 const SOURCES: Source[] = [
@@ -334,3 +335,49 @@ export const SAMPLE_READING: Reading = {
   traits: TRAITS,
   isSample: true,
 };
+
+/** 英語表示のときの見本（引用は翻訳しない。紙の種類と強みの候補・問いかけだけ英語にする） */
+const EN_SOURCE_LABELS: Record<string, string> = {
+  school: 'Elementary school yearbook',
+  jhs: 'Middle school yearbook',
+  club: 'University club album',
+  work: 'Farewell card from work',
+  cards: 'Thank-you cards',
+};
+
+const EN_TRAITS: Record<string, Pick<Trait, 'label' | 'questions'>> = {
+  stay: {
+    label: 'Stays until the job is done',
+    questions: [
+      'When you stayed until the end, what were you paying attention to?',
+      'Have you done the same thing at work recently?',
+      'Has this ever backfired?',
+    ],
+  },
+  calm: {
+    label: 'Calm and easy to talk to',
+    questions: [
+      'When people around you panic, what are you looking at?',
+      'When was the last time someone came to you for advice?',
+    ],
+  },
+  ask: {
+    label: 'Explains as many times as it takes',
+    questions: [
+      'Why didn’t it bother you to be asked the same thing again and again?',
+      'Does anyone at your current workplace come to you with questions?',
+    ],
+  },
+};
+
+const SAMPLE_READING_EN: Reading = {
+  ...SAMPLE_READING,
+  sources: SOURCES.map((s) => ({
+    ...s,
+    label: EN_SOURCE_LABELS[s.id] ?? s.label,
+  })),
+  traits: TRAITS.map((t) => ({ ...t, ...EN_TRAITS[t.id] })),
+};
+
+export const sampleReading = (lang: Lang): Reading =>
+  lang === 'en' ? SAMPLE_READING_EN : SAMPLE_READING;

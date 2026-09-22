@@ -3,6 +3,7 @@ import { type DragEvent, useEffect, useId, useMemo, useState } from 'react';
 import { useReading } from '../components/ReadingProvider';
 import { primaryButton, SiteHeader } from '../components/site/SiteHeader';
 import { useExtractorClient } from '../hooks/useExtractorClient';
+import { useLang } from '../hooks/useLang';
 import { isHeic, toImageInput } from '../lib/image';
 import { fromExtraction, type Source } from '../lib/reading';
 
@@ -29,6 +30,8 @@ function UploadPage() {
   const client = useExtractorClient();
   const { setReading } = useReading();
   const navigate = useNavigate();
+  const { lang, t: all } = useLang();
+  const t = all.upload;
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -86,7 +89,7 @@ function UploadPage() {
     try {
       const images = await Promise.all(
         photos.map(async (p) => ({
-          ...(await toImageInput(p.file)),
+          ...(await toImageInput(p.file, lang)),
           label: p.label.trim(),
           yearsAgo: p.yearsAgo,
         })),
@@ -95,7 +98,7 @@ function UploadPage() {
         ? [
             {
               text: recentText.trim(),
-              label: recentLabel.trim() || '最近もらった言葉',
+              label: recentLabel.trim() || t.recentDefaultLabel,
               yearsAgo: 0,
             },
           ]
@@ -105,7 +108,7 @@ function UploadPage() {
       const sources: Source[] = [
         ...photos.map((p, i) => ({
           id: `p${i}`,
-          label: p.label.trim() || `写真 ${i + 1}`,
+          label: p.label.trim() || t.photoFallback(i + 1),
           yearsAgo: p.yearsAgo,
           kind: 'photo' as const,
         })),
@@ -117,14 +120,18 @@ function UploadPage() {
         })),
       ];
 
-      for await (const chunk of client.invoke({ images, texts })) {
+      for await (const chunk of client.invoke({
+        images,
+        texts,
+        language: lang,
+      })) {
         if (chunk.type === 'result' && chunk.result) {
           setReading(fromExtraction(chunk.result, sources));
           navigate({ to: '/result' });
           return;
         }
       }
-      throw new Error('結果が返ってきませんでした');
+      throw new Error(t.noResult);
     } catch (e) {
       console.error(e);
       setErrorDetail(e instanceof Error ? e.message : String(e));
@@ -135,7 +142,7 @@ function UploadPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader>
-        <span className="text-[13px] text-ink-4">ステップ 1 / 2　読み込む</span>
+        <span className="text-[13px] text-ink-4">{t.step}</span>
         <div className="hidden h-1 w-[180px] rounded-sm bg-edge sm:block">
           <div className="h-1 w-[108px] rounded-sm bg-shu" />
         </div>
@@ -143,11 +150,9 @@ function UploadPage() {
 
       <main className="mx-auto flex w-full max-w-[1280px] flex-1 flex-col gap-10 px-6 py-12 md:px-14 lg:flex-row">
         <section className="flex w-full max-w-[560px] flex-col">
-          <h1 className="font-mincho text-[30px] font-semibold">
-            もらった紙を、そのまま撮る
-          </h1>
+          <h1 className="font-mincho text-[30px] font-semibold">{t.title}</h1>
           <p className="mt-3.5 text-[15px] leading-[1.9] text-ink-3">
-            色紙、寄せ書き、サンクスカード、手紙。1枚に何人分書かれていても大丈夫です。時期の違う紙があるほど、共通点が見つかりやすくなります。
+            {t.lead}
           </p>
 
           <label
@@ -177,12 +182,12 @@ function UploadPage() {
               <path d="M3 7h4l2-2h6l2 2h4v12H3z" />
               <circle cx="12" cy="13" r="3.5" />
             </svg>
-            <span className="text-base font-medium">紙の写真をここに置く</span>
+            <span className="text-base font-medium">{t.drop}</span>
             <span className="text-center text-xs leading-[1.8] text-ink-4">
-              斜めでも、光が入っていても読み取れます（最大{MAX_FILES}枚）。
+              {t.dropHint(MAX_FILES)}
             </span>
             <span className="mt-1.5 inline-flex h-12 items-center rounded-[3px] border border-line-strong bg-sheet px-6 text-sm text-ink-2">
-              画像を選ぶ
+              {t.choose}
             </span>
             <input
               id={inputId}
@@ -202,18 +207,17 @@ function UploadPage() {
               htmlFor={`${inputId}-recent`}
               className="text-[15px] font-medium"
             >
-              最近もらった言葉（任意）
+              {t.recentTitle}
             </label>
             <span className="text-xs leading-[1.8] text-ink-4">
-              ピアボーナスや Slack
-              の感謝のメッセージなどを貼り付けると、昔の紙とのつながりが見えます。
+              {t.recentHint}
             </span>
             <input
               type="text"
               value={recentLabel}
               onChange={(e) => setRecentLabel(e.target.value)}
-              placeholder="出どころ（例: 社内のピアボーナス）"
-              aria-label="最近もらった言葉の出どころ"
+              placeholder={t.recentLabelPlaceholder}
+              aria-label={t.recentLabelAria}
               maxLength={60}
               className={fieldClass}
             />
@@ -223,17 +227,17 @@ function UploadPage() {
               onChange={(e) => setRecentText(e.target.value)}
               maxLength={MAX_TEXT_CHARS}
               rows={5}
-              placeholder="例: 障害対応のとき、最後まで一緒に原因を追ってくれて助かりました"
+              placeholder={t.recentTextPlaceholder}
               className="rounded-[3px] border border-line-strong bg-sheet px-3 py-2.5 text-sm leading-[1.8] text-ink-2 focus:border-shu focus:outline-none"
             />
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
             <Link
-              to="/result"
+              to="/sample"
               className="text-[13px] text-ink-4 hover:text-shu"
             >
-              見本の結果を見る
+              {t.sample}
             </Link>
             <button
               type="button"
@@ -241,16 +245,16 @@ function UploadPage() {
               disabled={!canRead}
               className={`${primaryButton} h-[52px] cursor-pointer px-[34px] text-[15px] disabled:cursor-not-allowed disabled:opacity-50`}
             >
-              {status === 'reading' ? '読み取っています…' : '読み取る'}
+              {status === 'reading' ? t.reading : t.read}
             </button>
           </div>
           <div aria-live="polite" className="mt-3 min-h-5 text-xs text-ink-4">
-            {status === 'reading' &&
-              '1〜2分かかることがあります。写真は読み取りにだけ使い、保存しません。'}
+            {status === 'reading' && t.readingHint}
             {status === 'error' && (
               <span className="text-shu">
-                読み取りに失敗しました。
-                {errorDetail && `（${errorDetail}）`}
+                {t.failed}
+                {errorDetail &&
+                  (lang === 'ja' ? `（${errorDetail}）` : ` (${errorDetail})`)}
               </span>
             )}
           </div>
@@ -258,12 +262,12 @@ function UploadPage() {
 
         <section className="flex flex-1 flex-col">
           <span className="text-xs tracking-[0.14em] text-ink-5">
-            読み込む紙
+            {t.listTitle}
           </span>
           <ul className="mt-3.5 flex flex-col gap-2.5">
             {photos.length === 0 && (
               <li className="rounded-[3px] border border-dashed border-line-strong px-4 py-6 text-[13px] text-ink-4">
-                写真を選ぶと、ここに1枚ずつ並びます。紙の種類と、何年前にもらったかを入れてください。
+                {t.listEmpty}
               </li>
             )}
             {photos.map((p, i) => (
@@ -283,8 +287,8 @@ function UploadPage() {
                     onChange={(e) =>
                       updatePhoto(p.key, { label: e.target.value })
                     }
-                    placeholder="例: 中学の卒業寄せ書き"
-                    aria-label={`写真 ${i + 1} の紙の種類`}
+                    placeholder={t.photoLabelPlaceholder}
+                    aria-label={t.photoLabelAria(i + 1)}
                     maxLength={60}
                     className={`${fieldClass} min-w-0 flex-1`}
                   />
@@ -304,13 +308,13 @@ function UploadPage() {
                       }
                       className={`${fieldClass} w-16`}
                     />
-                    年前
+                    {t.yearsAgoSuffix}
                   </label>
                 </div>
                 <button
                   type="button"
                   onClick={() => removePhoto(p.key)}
-                  aria-label={`写真 ${i + 1} を外す`}
+                  aria-label={t.remove(i + 1)}
                   className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-[3px] text-ink-5 hover:bg-kinari hover:text-shu"
                 >
                   <svg

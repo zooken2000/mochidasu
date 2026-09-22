@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { primaryButton, SiteHeader } from '../components/site/SiteHeader';
-import { SAMPLE_READING } from '../demo/sample';
+import { sampleReading } from '../demo/sample';
+import { useLang } from '../hooks/useLang';
 import { findSource, whenLabel } from '../lib/reading';
 
 export const Route = createFileRoute('/')({
@@ -16,70 +17,54 @@ const floatStyles = [
   'top-[500px] left-[18px] w-[286px] -rotate-[1.5deg]',
 ];
 
-const STEPS = [
-  {
-    no: '01',
-    title: '読み込む',
-    body: 'もらった紙を撮るだけ。1人分ずつ自動で切り分けます。',
-  },
-  {
-    no: '02',
-    title: '捨てる',
-    body: '挨拶と定型句と内輪ネタを外します。',
-  },
-  {
-    no: '03',
-    title: '持ち出す',
-    body: '残った言葉を、書かれたままの字ごと持ち歩けるようにします。',
-  },
-];
-
 function EntryPage() {
+  const { lang, t } = useLang();
+  const sample = sampleReading(lang);
   const floating = FLOATING.map((id) =>
-    SAMPLE_READING.fragments.find((f) => f.id === id),
+    sample.fragments.find((f) => f.id === id),
   ).filter((f) => f !== undefined);
 
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader>
-        <a
-          href="#how"
+        <Link
+          to="/how"
           className="text-sm text-ink-4 no-underline hover:text-shu"
         >
-          つかいかた
-        </a>
+          {t.entry.howLink}
+        </Link>
         <Link
           to="/upload"
-          className={`${primaryButton} h-11 px-[22px] text-sm`}
+          className={`${primaryButton} h-10 px-3.5! text-[13px] sm:h-11 sm:px-[22px]! sm:text-sm`}
         >
-          はじめる
+          {t.entry.start}
         </Link>
       </SiteHeader>
 
       <main className="mx-auto flex w-full max-w-[1280px] flex-1 flex-col gap-12 px-6 pt-12 md:px-14 md:pt-[72px] lg:flex-row">
         <div className="flex max-w-[600px] flex-col">
           <span className="text-[13px] tracking-[0.18em] text-cha">
-            実家の押し入れと、引き出しの奥から
+            {t.entry.eyebrow}
           </span>
           <h1 className="mt-5 font-mincho text-[38px] font-semibold leading-[1.42] tracking-[0.01em] md:text-[50px]">
-            自分を説明する言葉は、
+            {t.entry.title[0]}
             <br />
-            もう誰かが
+            {t.entry.title[1]}
             <br />
-            書いている。
+            {t.entry.title[2]}
           </h1>
           <p className="mt-7 max-w-[520px] text-base leading-loose text-ink-3">
-            卒業アルバムの寄せ書き。退職のときの色紙。職場でもらったサンクスカード。あなたについて他人が書いた紙は、たいてい実家に置いたままです。引っ越しにも、結婚にも、持ち出さないまま。
+            {t.entry.lead}
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-6">
             <Link to="/upload" className={`${primaryButton} h-14 text-base`}>
-              紙を読み込む
+              {t.entry.read}
             </Link>
             <Link
-              to="/result"
+              to="/sample"
               className="text-[15px] text-ink-4 hover:text-shu"
             >
-              サンプルの結果を見る
+              {t.entry.sample}
             </Link>
           </div>
 
@@ -87,7 +72,7 @@ function EntryPage() {
             id="how"
             className="mt-16 grid grid-cols-1 gap-5 border-t border-line pt-8 sm:grid-cols-3"
           >
-            {STEPS.map((s) => (
+            {t.entry.steps.map((s) => (
               <div key={s.no} className="flex flex-col gap-2">
                 <span className="font-mincho text-[15px] text-shu">{s.no}</span>
                 <span className="text-[15px] font-medium">{s.title}</span>
@@ -104,14 +89,14 @@ function EntryPage() {
           aria-hidden="true"
         >
           {floating.map((f, i) => {
-            const s = findSource(SAMPLE_READING, f.sourceId);
+            const s = findSource(sample, f.sourceId, lang);
             return (
               <div
                 key={f.id}
                 className={`absolute rounded-[2px] border border-edge bg-sheet px-7 py-[26px] shadow-[0_10px_28px_rgba(60,46,28,0.13)] ${floatStyles[i]}`}
               >
                 <span className="text-[11px] tracking-[0.14em] text-ink-5">
-                  {s.label}　{whenLabel(s.yearsAgo)}
+                  {s.label}　{whenLabel(s.yearsAgo, lang)}
                 </span>
                 <p className="mt-3.5 font-mincho text-[15px] leading-[2.1] text-ink-2">
                   {f.text}
@@ -124,9 +109,7 @@ function EntryPage() {
 
       <footer className="border-t border-line">
         <div className="mx-auto flex h-14 max-w-[1280px] items-center px-6 md:px-14">
-          <span className="text-xs text-ink-4">
-            表示中のサンプルは、架空の人物「佐藤 陽」さんに宛てた寄せ書きです。
-          </span>
+          <span className="text-xs text-ink-4">{t.entry.footer}</span>
         </div>
       </footer>
     </div>

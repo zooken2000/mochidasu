@@ -10,14 +10,18 @@ Built for the AWS Builder Center **Zero to Shipped** hackathon · `#personal-exp
 
 日本語の説明は [README.ja.md](README.ja.md) にあります。
 
+**Try it:** https://d1x77t2z0ibnhe.cloudfront.net/?lang=en (no sign-in) · Sample result: https://d1x77t2z0ibnhe.cloudfront.net/sample?lang=en
+
+The UI is available in English and Japanese (switch at the top right, or add `?lang=en` / `?lang=ja` to the URL). Quotes always stay in the language they were written in.
+
 ---
 
 ## What it does
 
-1. **Read.** Upload photos of message boards or cards. For each one, enter what it is and how many years ago you got it. You can also paste recent messages, such as peer-bonus notes or Slack thanks.
+1. **Read.** Upload photos of message boards or cards (JPEG or PNG, up to 6; iPhone HEIC photos work in Safari). For each one, enter what it is and how many years ago you got it. You can also paste recent messages, such as peer-bonus notes or Slack thanks.
 2. **Filter.** Claude on Amazon Bedrock splits the messages by person and keeps only the specific ones. Greetings, set phrases and inside jokes are dropped.
-3. **Connect.** Traits mentioned by **two or more different writers** become *"things you take for granted"*. Each one shows the original quotes in time order, plus a few questions that help you recall a recent example of your own.
-4. **Take it with you.** One click copies the kept quotes, with their sources, as plain text.
+3. **Connect.** Traits mentioned by **two or more different writers** become *"things you take for granted"*. Each one shows the original quotes in time order, plus a few questions that help you recall a recent example of your own. The trait labels and questions are written in the UI language; the quotes are never translated.
+4. **Copy.** One click copies the kept quotes, with when and where each came from, as plain text.
 
 Example from the built-in sample: in the notes to a fictional person, a middle-school classmate (8 years ago), a club friend (4 years ago), a coworker's thank-you card (3 years ago) and a farewell board (this year) all describe the same trait in different words: *"stays until the job is done."*
 
@@ -34,8 +38,8 @@ Example from the built-in sample: in the notes to a fictional person, a middle-s
 
 | Layer | Service / library | Notes |
 |---|---|---|
-| Web | React + Vite, TanStack Router, Tailwind, shadcn/ui | Served from **Amazon CloudFront + S3** (private bucket, OAC) |
-| Access | **Amazon Cognito identity pool** (guest identities) | No sign-in. Guests get short-lived credentials that can **only** invoke the agent, and every request is SigV4-signed |
+| Web | React + Vite, TanStack Router, Tailwind, shadcn/ui | Served from **Amazon CloudFront + S3** (private bucket, OAC, strict Content-Security-Policy). English and Japanese UI |
+| Access | **Amazon Cognito identity pool** (guest identities, basic flow) + AWS STS | No sign-in. Guests get short-lived credentials that can **only** invoke the agent, and every request is SigV4-signed |
 | Agent | **Strands Agents** (Python 3.14, FastAPI) on **Amazon Bedrock AgentCore Runtime** | IAM auth, HTTP streaming, structured output, in-memory only |
 | Model | **Claude Sonnet 4.6 on Amazon Bedrock** | Reads handwriting and returns typed JSON (`fragments`, `traits`) |
 | Config | AWS AppConfig | Runtime configuration for the agent |
@@ -45,8 +49,11 @@ To keep hackathon costs low, the stack has no WAF, no user pool and no database.
 
 ## Built with coding agents
 
-- **Claude (Cowork):** product design, UI implementation from the design mock, the agent and its verification logic, tests, and debugging. The agent found a HEIC photo failure by driving Chrome on the developer's Mac, then added in-browser HEIC → JPEG conversion.
-- **Claude Code + AWS MCP Server (Agent Toolkit for AWS):** local development, deployment and operations against the AWS account.
+- **Claude (Cowork):** product design, UI implementation from the design mock, the English/Japanese UI, the agent and its verification logic, tests, and debugging in the developer's own browser. For example, it found that:
+  - HEIC photos from an iPhone could not be read in Chrome;
+  - guest credentials from the identity pool's default (enhanced) flow come with a scope-down policy that does not allow `bedrock-agentcore:InvokeAgentRuntime` (the fix was the basic flow plus STS);
+  - the site's Content-Security-Policy blocked `blob:` images, so photos could not be resized in production.
+- **Claude Code + AWS MCP Server (Agent Toolkit for AWS):** deployment and operations against the AWS account. It read the AgentCore Runtime logs in CloudWatch and found that the packaged start-up script pointed at the developer's local Python (fixed at build time by `scripts/fix_shebangs.py`). It also recovered a CloudFormation stack stuck in `UPDATE_FAILED` after an express-mode deploy.
 - **Nx Plugin for AWS MCP server:** scaffolding and generators for the monorepo.
 
 ## Getting started
@@ -73,7 +80,7 @@ See [docs/development.md](docs/development.md) for details and troubleshooting.
 
 ```
 packages/
-  web/                 React app (routes: / entry, /upload, /result)
+  web/                 React app (routes: / entry, /upload, /result, /sample, /how)
   agent/               Strands agent "extractor" (schema.py, verify.py, agent.py, main.py)
   infra/               CDK app (ApplicationStack)
   common/constructs/   Shared CDK constructs (GuestIdentity, Extractor, Web)
@@ -88,5 +95,7 @@ docs/
 
 ## Roadmap
 
+- Reuse the agent session within a browser tab, so only the first request waits for a cold start.
+- Convert HEIC photos in Chrome as well (today the converter needs `unsafe-eval`, which the Content-Security-Policy does not allow).
 - Show the actual handwriting: crop each message from the photo so it can be read in the writer's own hand.
 - Connect to peer-bonus and thanks tools at work, so the words keep building up week after week instead of arriving once at graduation or a job change.

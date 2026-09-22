@@ -1,4 +1,5 @@
 import type { ImageInput } from '../generated/extractor/types.gen';
+import { type Lang, MESSAGES } from './i18n';
 
 /** Bedrock に送る前に長辺をこのサイズまで縮める (文字が読める範囲で軽くする) */
 export const MAX_EDGE = 2000;
@@ -28,13 +29,20 @@ export const isHeic = (file: Pick<File, 'name' | 'type'>): boolean =>
   /image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
 
 /** HEIC を JPEG に変換する（Chrome などは HEIC を表示できないため）。変換ライブラリは必要なときだけ読み込む */
-const heicToJpeg = async (file: File): Promise<File> => {
+const HEIC_TIMEOUT_MILLIS = 30 * 1000;
+
+const heicToJpeg = async (file: File, lang: Lang): Promise<File> => {
   const { default: heic2any } = await import('heic2any');
-  const out = await heic2any({
-    blob: file,
-    toType: 'image/jpeg',
-    quality: 0.9,
-  });
+  // 変換が止まったまま返ってこないことがあるので、待つ時間に上限を付ける
+  const out = await Promise.race([
+    heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 }),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(MESSAGES[lang].image.heicTimeout(file.name))),
+        HEIC_TIMEOUT_MILLIS,
+      ),
+    ),
+  ]);
   const blob = Array.isArray(out) ? out[0] : out;
   return new File([blob], file.name.replace(/\.hei[cf]$/i, '.jpg'), {
     type: 'image/jpeg',
@@ -42,7 +50,7 @@ const heicToJpeg = async (file: File): Promise<File> => {
 };
 
 /** File を <img> で読み込む（Safari の HEIC なども、ブラウザが表示できる形式なら読める） */
-const loadImage = (file: File): Promise<HTMLImageElement> =>
+const loadImage = (file: File, lang: Lang): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -52,31 +60,30 @@ const loadImage = (file: File): Promise<HTMLImageElement> =>
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(
-        new Error(
-          `「${file.name}」を読み込めませんでした。JPEG か PNG で保存し直して試してください。`,
-        ),
-      );
+      reject(new Error(MESSAGES[lang].image.cannotLoad(file.name)));
     };
     img.src = url;
   });
 
 /** スマホで撮った写真を縮小・JPEG 化してエージェントに渡せる形にする */
-export const toImageInput = async (file: File): Promise<ImageInput> => {
+export const toImageInput = async (
+  file: File,
+  lang: Lang = 'ja',
+): Promise<ImageInput> => {
   let img: HTMLImageElement;
   try {
-    img = await loadImage(file);
+    img = await loadImage(file, lang);
   } catch (e) {
     // Safari は HEIC をそのまま読めるので、読めなかったときだけ変換する
     if (!isHeic(file)) throw e;
-    img = await loadImage(await heicToJpeg(file));
+    img = await loadImage(await heicToJpeg(file, lang), lang);
   }
   const { width, height } = fitWithin(img.naturalWidth, img.naturalHeight);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('画像を処理できませんでした');
+  if (!ctx) throw new Error(MESSAGES[lang].image.cannotProcess);
   ctx.drawImage(img, 0, 0, width, height);
   return {
     format: 'jpeg',

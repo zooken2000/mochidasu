@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HowRouteImport } from './routes/how'
 import { Route as ResultRouteImport } from './routes/result'
+import { Route as SampleRouteImport } from './routes/sample'
 import { Route as UploadRouteImport } from './routes/upload'
 
 const IndexRoute = IndexRouteImport.update({
@@ -18,9 +20,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HowRoute = HowRouteImport.update({
+  id: '/how',
+  path: '/how',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResultRoute = ResultRouteImport.update({
   id: '/result',
   path: '/result',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SampleRoute = SampleRouteImport.update({
+  id: '/sample',
+  path: '/sample',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UploadRoute = UploadRouteImport.update({
@@ -31,31 +43,39 @@ const UploadRoute = UploadRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/how': typeof HowRoute
   '/result': typeof ResultRoute
+  '/sample': typeof SampleRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/how': typeof HowRoute
   '/result': typeof ResultRoute
+  '/sample': typeof SampleRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/how': typeof HowRoute
   '/result': typeof ResultRoute
+  '/sample': typeof SampleRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/result' | '/upload'
+  fullPaths: '/' | '/how' | '/result' | '/sample' | '/upload'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/result' | '/upload'
-  id: '__root__' | '/' | '/result' | '/upload'
+  to: '/' | '/how' | '/result' | '/sample' | '/upload'
+  id: '__root__' | '/' | '/how' | '/result' | '/sample' | '/upload'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HowRoute: typeof HowRoute
   ResultRoute: typeof ResultRoute
+  SampleRoute: typeof SampleRoute
   UploadRoute: typeof UploadRoute
 }
 
@@ -68,11 +88,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/how': {
+      id: '/how'
+      path: '/how'
+      fullPath: '/how'
+      preLoaderRoute: typeof HowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/result': {
       id: '/result'
       path: '/result'
       fullPath: '/result'
       preLoaderRoute: typeof ResultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sample': {
+      id: '/sample'
+      path: '/sample'
+      fullPath: '/sample'
+      preLoaderRoute: typeof SampleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/upload': {
@@ -87,7 +121,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HowRoute: HowRoute,
   ResultRoute: ResultRoute,
+  SampleRoute: SampleRoute,
   UploadRoute: UploadRoute,
 }
 export const routeTree = rootRouteImport

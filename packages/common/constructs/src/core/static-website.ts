@@ -7,6 +7,7 @@ import {
   RemovalPolicy,
   Stack,
 } from 'aws-cdk-lib';
+import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import {
   Distribution,
   HeadersFrameOption,
@@ -15,8 +16,16 @@ import {
   SecurityPolicyProtocol,
   ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
-import { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { IKey, Key } from 'aws-cdk-lib/aws-kms';
+import {
+  CfnDelivery,
+  CfnDeliveryDestination,
+  CfnDeliverySource,
+  LogGroup,
+  RetentionDays,
+} from 'aws-cdk-lib/aws-logs';
 import {
   BlockPublicAccess,
   Bucket,
@@ -29,19 +38,10 @@ import {
   CacheControl,
   Source,
 } from 'aws-cdk-lib/aws-s3-deployment';
-import { Construct } from 'constructs';
-import { RuntimeConfig } from './runtime-config.js';
-import { IKey, Key } from 'aws-cdk-lib/aws-kms';
-import {
-  CfnDelivery,
-  CfnDeliveryDestination,
-  CfnDeliverySource,
-  LogGroup,
-  RetentionDays,
-} from 'aws-cdk-lib/aws-logs';
-import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { CfnWebACL } from 'aws-cdk-lib/aws-wafv2';
+import { Construct } from 'constructs';
 import { suppressRules } from './checkov.js';
+import { RuntimeConfig } from './runtime-config.js';
 
 const DEFAULT_RUNTIME_CONFIG_FILENAME = 'runtime-config.json';
 
@@ -50,13 +50,19 @@ const DEFAULT_RUNTIME_CONFIG_FILENAME = 'runtime-config.json';
 // (connect-src) to AWS service endpoints such as API Gateway, Cognito and
 // Bedrock AgentCore which are only known at deploy time. Edit this to tighten
 // connect-src to your specific origins once they are known.
+//
+// もちだす向けの追加:
+// - img-src blob: 選んだ写真を <img> で読み込んで縮小するため（URL.createObjectURL）
+// - worker-src blob: HEIC を JPEG に変換するライブラリ（heic2any）が blob から Worker を作るため
+// - Google Fonts: index.html で読み込む書体（Klee One など）のため
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self' data:",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   "connect-src 'self' https: wss:",
+  "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
   "frame-ancestors 'none'",

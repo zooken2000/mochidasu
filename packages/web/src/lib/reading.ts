@@ -1,4 +1,5 @@
 import type { Extraction } from '../generated/extractor/types.gen';
+import { type Lang, MESSAGES, whenLabelIn } from './i18n';
 
 /** 紙1枚・貼り付け1件などの素材 */
 export type Source = {
@@ -39,13 +40,17 @@ export type Reading = {
   isSample: boolean;
 };
 
-export const whenLabel = (yearsAgo: number) =>
-  yearsAgo === 0 ? '今年' : `${yearsAgo}年前`;
+export const whenLabel = (yearsAgo: number, lang: Lang = 'ja') =>
+  whenLabelIn(lang, yearsAgo);
 
-export const findSource = (reading: Reading, id: string): Source =>
+export const findSource = (
+  reading: Reading,
+  id: string,
+  lang: Lang = 'ja',
+): Source =>
   reading.sources.find((s) => s.id === id) ?? {
     id,
-    label: '不明な素材',
+    label: MESSAGES[lang].unknownSource,
     yearsAgo: 0,
     kind: 'photo',
   };
