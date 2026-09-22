@@ -61,7 +61,10 @@ const TraitCard = ({
                   <span className="text-[11px] tracking-[0.12em] text-ink-5">
                     {whenLabel(s.yearsAgo, lang)}　{s.label}
                   </span>
-                  <p className="mt-1 font-mincho text-base leading-[1.9] text-ink-2">
+                  <p
+                    translate="no"
+                    className="mt-1 font-mincho text-base leading-[1.9] text-ink-2"
+                  >
                     {all.plain.quote(q.text)}
                   </p>
                 </li>

@@ -98,7 +98,10 @@ function EntryPage() {
                 <span className="text-[11px] tracking-[0.14em] text-ink-5">
                   {s.label}　{whenLabel(s.yearsAgo, lang)}
                 </span>
-                <p className="mt-3.5 font-mincho text-[15px] leading-[2.1] text-ink-2">
+                <p
+                  translate="no"
+                  className="mt-3.5 font-mincho text-[15px] leading-[2.1] text-ink-2"
+                >
                   {f.text}
                 </p>
               </div>

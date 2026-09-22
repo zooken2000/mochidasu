@@ -14,10 +14,15 @@ import {
 
 const FIRST_VIEW = 4;
 
+/**
+ * 人が書いた言葉（引用・書き手の名前）には translate="no" を付け、ブラウザの自動翻訳で書き換えさせない。
+ */
+
 /** 手書きの切り抜き（見本では、実物の画像の代わりに手書き風の書体で描く） */
 const Clipping = ({ fragment }: { fragment: Fragment }) => (
   <div className="flex h-[260px] items-center justify-center border-b border-edge bg-[#F7F3EA] p-5">
     <div
+      translate="no"
       className="flex max-w-full flex-col gap-2 rounded-[2px] px-5 py-4 font-hand text-[15px] leading-[1.7] text-[#23304A] shadow-[0_2px_8px_rgba(60,46,28,0.12)]"
       style={{ background: fragment.paper ?? '#FDFCF8' }}
     >
@@ -115,7 +120,10 @@ export const ReadingView = ({ reading }: { reading: Reading }) => {
                 <Clipping fragment={f} />
                 <div className="flex flex-col gap-2 px-4 py-3.5">
                   {showText && (
-                    <span className="text-xs leading-[1.8] text-ink-4">
+                    <span
+                      translate="no"
+                      className="text-xs leading-[1.8] text-ink-4"
+                    >
                       {f.text}
                     </span>
                   )}
@@ -162,11 +170,14 @@ export const ReadingView = ({ reading }: { reading: Reading }) => {
             <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
               {droppedFragments.map((f) => (
                 <li key={f.id} className="text-[13px] leading-[1.8] text-ink-4">
-                  {f.text}
+                  <span translate="no">{f.text}</span>
                   <span className="ml-2 text-[11px] text-ink-5">
-                    {f.writer
-                      ? `${f.writer}${lang === 'ja' ? '・' : ' · '}`
-                      : ''}
+                    {f.writer && (
+                      <span translate="no">
+                        {f.writer}
+                        {lang === 'ja' ? '・' : ' · '}
+                      </span>
+                    )}
                     {findSource(reading, f.sourceId, lang).label}
                   </span>
                 </li>
