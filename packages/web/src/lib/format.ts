@@ -1,38 +1,43 @@
-import type { Extraction, Phrase } from '../generated/extractor/types.gen';
+import {
+  type Fragment,
+  findSource,
+  type Reading,
+  type Trait,
+  whenLabel,
+} from './reading';
 
-export const THEME_ORDER: Phrase['theme'][] = [
-  '強み',
-  '仕事ぶり',
-  '人柄',
-  '関わり方',
-  '感謝',
-  'その他',
-];
+/** 残す／捨てるの件数 */
+export const summarize = (fragments: Fragment[]) => {
+  const kept = fragments.filter((f) => f.keep).length;
+  return { total: fragments.length, kept, dropped: fragments.length - kept };
+};
 
-/** theme ごとにまとめ、THEME_ORDER の順で返す (空の theme は除く) */
-export const groupByTheme = (
-  phrases: Phrase[],
-): { theme: Phrase['theme']; phrases: Phrase[] }[] =>
-  THEME_ORDER.map((theme) => ({
-    theme,
-    phrases: phrases.filter((p) => p.theme === theme),
-  })).filter((g) => g.phrases.length > 0);
+/** 持ち出し用のプレーンテキスト（メモアプリなどに貼る想定） */
+export const toPlainText = (reading: Reading): string =>
+  reading.fragments
+    .filter((f) => f.keep)
+    .map((f) => {
+      const s = findSource(reading, f.sourceId);
+      const by = f.writer
+        ? `${f.writer}（${s.label}・${whenLabel(s.yearsAgo)}）`
+        : `${s.label}・${whenLabel(s.yearsAgo)}`;
+      return `「${f.text}」\n　— ${by}`;
+    })
+    .join('\n\n');
 
-/** 持ち歩き用のプレーンテキスト (メモアプリや職務経歴書に貼る想定) */
-export const toPlainText = (extraction: Extraction): string => {
-  const lines: string[] = [];
-  if (extraction.keywords.length > 0) {
-    lines.push(
-      `■ よく言われること: ${extraction.keywords.map((k) => k.word).join(' / ')}`,
-      '',
-    );
-  }
-  for (const group of groupByTheme(extraction.phrases)) {
-    lines.push(`■ ${group.theme}`);
-    for (const p of group.phrases) {
-      lines.push(`「${p.text}」${p.writer ? ` — ${p.writer}` : ''}`);
-    }
-    lines.push('');
-  }
-  return lines.join('\n').trimEnd();
+/** 強みの候補の根拠を、古い順に並べて期間をまとめる */
+export const traitEvidence = (trait: Trait, reading: Reading) => {
+  const quotes = trait.fragmentIds
+    .map((id) => reading.fragments.find((f) => f.id === id))
+    .filter((f): f is Fragment => f !== undefined)
+    .map((f) => ({ ...f, source: findSource(reading, f.sourceId) }))
+    .sort((a, b) => b.source.yearsAgo - a.source.yearsAgo);
+  const years = quotes.map((q) => q.source.yearsAgo);
+  return {
+    quotes,
+    writers: new Set(quotes.map((q) => `${q.sourceId}:${q.writer ?? q.id}`))
+      .size,
+    spanYears: years.length > 0 ? Math.max(...years) - Math.min(...years) : 0,
+    contexts: new Set(quotes.map((q) => q.sourceId)).size,
+  };
 };

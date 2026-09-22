@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "nx-plugin-for-aws": {
-      "command": "npx",
-      "args": ["-y", "@aws/nx-plugin-mcp"]
-    }
-  }
-}

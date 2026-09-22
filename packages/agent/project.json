@@ -20,10 +20,10 @@
         "infra": "agentcore",
         "port": 8081,
         "rc": "Extractor",
-        "auth": "cognito",
+        "auth": "iam",
         "protocol": "http",
         "framework": "strands",
-        "session": "s3",
+        "session": "in-memory",
         "iac": "cdk"
       }
     ]
@@ -61,8 +61,10 @@
       "outputs": ["{workspaceRoot}/dist/{projectRoot}/bundle-arm"],
       "options": {
         "commands": [
+          "shx rm -rf dist/{projectRoot}/bundle-arm",
           "uv export --frozen --no-dev --no-editable --project {projectRoot} --package mochidasu.agent -o dist/{projectRoot}/bundle-arm/requirements.txt",
-          "uv pip install -n --no-deps --no-installer-metadata --no-compile-bytecode --python-platform aarch64-manylinux_2_28 --python-version 3.14 --target dist/{projectRoot}/bundle-arm -r dist/{projectRoot}/bundle-arm/requirements.txt"
+          "uv pip install -n --no-deps --no-installer-metadata --no-compile-bytecode --python-platform aarch64-manylinux_2_28 --python-version 3.14 --target dist/{projectRoot}/bundle-arm -r dist/{projectRoot}/bundle-arm/requirements.txt",
+          "python3 {projectRoot}/scripts/fix_shebangs.py dist/{projectRoot}/bundle-arm/bin"
         ],
         "parallel": false
       }

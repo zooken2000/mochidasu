@@ -1,46 +1,26 @@
 # @mochidasu/web
-This library was generated with [@aws/nx-plugin](https://github.com/awslabs/nx-plugin-for-aws/).
 
-## Building
+The mochidasu web app: React + Vite, TanStack Router, Tailwind CSS and shadcn/ui. The UI is in Japanese.
 
-Run `pnpm nx build @mochidasu/web [--skip-nx-cache]` to build the application.
+| Route | Screen |
+|---|---|
+| `/` | Entry page (no sign-in). Links to the built-in sample |
+| `/upload` | Add photos (with "what it is" and "years ago") and/or paste recent messages, then call the agent |
+| `/result` | "Things you take for granted" (traits with quotes and questions) and the kept/dropped messages |
 
-## Run dev server
+## Key files
 
-Run `pnpm nx serve @mochidasu/web`
+- `src/lib/reading.ts`: the data shape shared by real results and the sample (`fromExtraction` converts the agent's output)
+- `src/lib/format.ts`: counts, trait evidence (sorted by year), plain-text export
+- `src/lib/image.ts`: resizes photos to a 2000px JPEG before upload
+- `src/hooks/useSigV4.tsx`: signs agent requests with guest credentials from the Cognito identity pool (skipped in local dev)
+- `src/demo/sample.ts`: the fictional sample data
+- `src/generated/`: typed agent client generated from the agent's OpenAPI schema (do not edit, git-ignored)
 
-## Running unit tests
+## Commands
 
-Run `pnpm nx test @mochidasu/web` to execute the unit tests via Vitest.
-
-### Updating snapshots
-
-To update snapshots, run the following command:
-
-`pnpm nx test @mochidasu/web --configuration=update-snapshot`
-
-## Run lint
-
-Run `pnpm nx lint @mochidasu/web`
-
-### Fixable issues
-
-You can also automatically fix some lint errors by running the following command:
-
-`pnpm nx lint @mochidasu/web --configuration=fix`
-
-### Runtime config
-
-In order to integrate with cognito or trpc backends, you need to have a `runtime-config.json` file in your `/public` website directory. You can fetch this is follows:
-
-`pnpm nx load-runtime-config @mochidasu/web`
-
-> [!IMPORTANT]
-> Ensure you have AWS CLI and curl installed
-> You have deployed your CDK infrastructure into the appropriate account
-> You have assumed a role in the AWS account with sufficient permissions to call describe-stacks from cloudformation
-
-## Useful links
-
-- [React website reference docs](TODO)
-- [Learn more about NX](https://nx.dev/getting-started/intro)
+```bash
+pnpm nx dev @mochidasu/web      # web + local agent, no sign-in
+pnpm nx test @mochidasu/web
+pnpm nx build @mochidasu/web
+```

@@ -1,8 +1,8 @@
 import { createContext, FC, PropsWithChildren, useMemo } from 'react';
-import { useAuth } from 'react-oidc-context';
 import { Extractor } from '../generated/extractor/client.gen';
 import { ExtractorOptionsProxy } from '../generated/extractor/options-proxy.gen';
 import { useRuntimeConfig } from '../hooks/useRuntimeConfig';
+import { useSigV4 } from '../hooks/useSigV4';
 
 /**
  * Build an HTTP URL from a Bedrock AgentCore Runtime ARN
@@ -28,20 +28,14 @@ const useCreateExtractorClient = (): Extractor => {
   const apiUrl = agentRuntimeValue.startsWith('arn:')
     ? buildAgentCoreHttpUrl(agentRuntimeValue)
     : agentRuntimeValue;
-  const auth = useAuth();
-  const user = auth?.user;
-  const cognitoClient: typeof fetch = (url, init) => {
-    const headers = new Headers(init?.headers);
-    headers.set('Authorization', `Bearer ${user?.access_token}`);
-    return fetch(url, { ...init, headers });
-  };
+  const sigv4Fetch = useSigV4();
   return useMemo(
     () =>
       new Extractor({
         url: apiUrl,
-        fetch: cognitoClient,
+        fetch: sigv4Fetch,
       }),
-    [apiUrl, cognitoClient],
+    [apiUrl, sigv4Fetch],
   );
 };
 

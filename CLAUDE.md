@@ -1,6 +1,40 @@
-# もちだす
+# もちだす — コーディングエージェント向けの指示
 
-作業を始める前に `docs/handoff.md`（引き継ぎメモ）と `docs/concept.md` を読むこと。会話は日本語で。
+## 最初に読むもの
+
+1. `README.ja.md`：全体像・構成・使用技術
+2. `docs/concept.md`：コンセプトと抽出ルール
+3. `docs/decisions.md`：決めたことと理由（見送った案を蒸し返さない）
+4. `docs/development.md`：動かし方・デプロイ・トラブル対応
+5. `../design/README.md`：UI デザインの控え（git の外。画面を変えるときは必ず見る）
+
+## 進め方
+
+- 会話は日本語
+- **変更の前に方針を短く提案し、了承を得てから実装する。** 一度に大きく進めない
+- デプロイ・削除・AWS リソースの変更は、実行前に必ず確認を取る
+
+## 守ること
+
+- **引用は原文のまま。** AI に言い換えさせない。貼り付け文章の照合（`verify.py`）を外さない
+- **強みの候補は2人以上の書き手から。** この条件をプログラムから外さない
+- **写真・文章を保存しない。** DB・S3・ローカルのファイルに残す処理を足さない
+- **ログインを必須にしない。** 審査員が公開 URL からそのまま試せること
+- **実在の人物の寄せ書きをリポジトリに入れない。** 見本は `packages/web/src/demo/sample.ts` の架空データだけ。実物は `../materials/`（git の外）
+- 画面の配色・書体は `packages/web/src/styles.css` の `@theme` を使う（朱 `shu`、生成り `kinari` など）
+
+## よく使うコマンド
+
+```bash
+pnpm nx dev @mochidasu/web                  # ローカル（画面 :4200 + エージェント :8081）
+pnpm nx run-many -t lint typecheck test     # 速い確認
+pnpm build                                  # 全部
+```
+
+## 触らないもの
+
+- `packages/web/src/generated/`、`packages/web/src/routeTree.gen.ts`（自動生成）
+- `packages/common/agent_connection/`（生成物）
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->

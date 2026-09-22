@@ -1,11 +1,18 @@
-# infra
+# @mochidasu/infra
 
-This library was generated with [Nx](https://nx.dev).
+The AWS CDK app. `src/stacks/application-stack.ts` defines one stack:
 
-## Building
+- `GuestIdentity`: Cognito identity pool with guest (unauthenticated) identities, allowed only to invoke the agent
+- `Extractor`: the agent on Bedrock AgentCore Runtime (IAM auth, no session storage)
+- `Web`: CloudFront + private S3 bucket (no WAF, to keep hackathon costs low)
 
-Run `nx build infra` to build the library.
+## Commands
 
-## Running unit tests
+```bash
+pnpm nx synth @mochidasu/infra
+pnpm nx bootstrap @mochidasu/infra        # first time per account/region
+pnpm nx deploy-sandbox @mochidasu/infra
+pnpm nx destroy-sandbox @mochidasu/infra
+```
 
-Run `nx test infra` to execute the unit tests via [Vitest](https://vitest.dev/).
+`checkov` runs as part of the build. Intentional exceptions are marked with `suppressRules` and a reason.

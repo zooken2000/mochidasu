@@ -60,3 +60,5 @@ catalog:
   '@tanstack/react-query': 5.102.8
   '@tanstack/react-query-devtools': 5.102.8
   '@smithy/types': 4.18.0
+  aws4fetch: 1.0.20
+  heic2any: 0.0.4

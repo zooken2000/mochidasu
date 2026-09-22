@@ -6,14 +6,16 @@ from pydantic import BaseModel, Field
 
 from .init import JsonStreamingResponse, app
 from .middleware.session_id_middleware import SessionIdMiddleware
-from .schema import MAX_IMAGES, Extraction, ImageInput
+from .schema import MAX_IMAGES, MAX_TEXTS, Extraction, ImageInput, SourceMeta, TextInput
+from .verify import verify
 
-DEFAULT_EXTRACT_PROMPT = "この紙から、私を説明する言葉を取り出してください。"
+DEFAULT_EXTRACT_PROMPT = "これらの素材から、私について書かれた言葉を読み取り、強みの候補をまとめてください。"
 
 
 class InvokeInput(BaseModel):
     prompt: str = Field(default="", max_length=10000)
     images: list[ImageInput] = Field(default_factory=list, max_length=MAX_IMAGES)
+    texts: list[TextInput] = Field(default_factory=list, max_length=MAX_TEXTS)
 
 
 class StreamChunk(BaseModel):
@@ -22,27 +24,43 @@ class StreamChunk(BaseModel):
     result: Extraction | None = None
 
 
-def build_content(input: InvokeInput) -> list[dict[str, Any]]:
-    """Strands に渡す ContentBlock のリストを組み立てる。"""
-    content: list[dict[str, Any]] = [
-        {"image": {"format": image.format, "source": {"bytes": image.to_bytes()}}} for image in input.images
-    ]
-    text = input.prompt.strip() or (DEFAULT_EXTRACT_PROMPT if input.images else "")
-    if text:
-        content.append({"text": text})
-    return content
+def _heading(n: int, meta: SourceMeta, kind: str) -> str:
+    when = "今年" if meta.years_ago == 0 else f"{meta.years_ago}年前"
+    label = meta.label.strip() or kind
+    return f"【素材{n}】{label}（{when}）"
+
+
+def build_content(input: InvokeInput) -> tuple[list[dict[str, Any]], dict[int, str]]:
+    """Strands に渡す ContentBlock と、照合用の {素材番号: 貼り付けた原文} を組み立てる。
+
+    素材番号は写真 → 貼り付けた文章の順に 0 から振る。
+    """
+    content: list[dict[str, Any]] = []
+    texts_by_source: dict[int, str] = {}
+    n = 0
+    for image in input.images:
+        content.append({"text": _heading(n, image, "写真")})
+        content.append({"image": {"format": image.format, "source": {"bytes": image.to_bytes()}}})
+        n += 1
+    for t in input.texts:
+        content.append({"text": f"{_heading(n, t, '最近もらった言葉')}\n{t.text}"})
+        texts_by_source[n] = t.text
+        n += 1
+    prompt = input.prompt.strip() or (DEFAULT_EXTRACT_PROMPT if n > 0 else "")
+    if prompt:
+        content.append({"text": prompt})
+    return content, texts_by_source
 
 
 async def handle_invoke(input: InvokeInput):
-    """画像があれば構造化抽出、無ければ通常の会話としてストリームする"""
-    content = build_content(input)
+    """素材があれば構造化抽出、無ければ通常の会話としてストリームする"""
+    content, texts_by_source = build_content(input)
     if not content:
-        yield StreamChunk(content="画像か質問を送ってください。")
+        yield StreamChunk(content="写真か文章を送ってください。")
         return
 
-    kwargs: dict[str, Any] = {}
-    if input.images:
-        kwargs["structured_output_model"] = Extraction
+    has_sources = bool(input.images or input.texts)
+    kwargs: dict[str, Any] = {"structured_output_model": Extraction} if has_sources else {}
 
     stream = app.state.agent.stream_async(content, **kwargs)
     async for event in stream:
@@ -54,7 +72,7 @@ async def handle_invoke(input: InvokeInput):
         elif "result" in event:
             structured = getattr(event["result"], "structured_output", None)
             if isinstance(structured, Extraction):
-                yield StreamChunk(type="result", result=structured)
+                yield StreamChunk(type="result", result=verify(structured, texts_by_source))
 
 
 @app.post(
@@ -72,7 +90,6 @@ app.add_middleware(SessionIdMiddleware)
 
 @app.get("/ping")
 def ping() -> str:
-    # TODO: if running an async task, return PingStatus.HEALTHY_BUSY
     return PingStatus.HEALTHY
 
 

@@ -1,196 +1,134 @@
-import {
-  Alert,
-  AlertDescription,
-} from '@mochidasu/common-shadcn/components/ui/alert';
-import { Button } from '@mochidasu/common-shadcn/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@mochidasu/common-shadcn/components/ui/card';
-import { createFileRoute } from '@tanstack/react-router';
-import { ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { Spinner } from '../components/spinner';
-import type { Extraction } from '../generated/extractor/types.gen';
-import { useExtractorClient } from '../hooks/useExtractorClient';
-import { groupByTheme, toPlainText } from '../lib/format';
-import { toImageInput } from '../lib/image';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { primaryButton, SiteHeader } from '../components/site/SiteHeader';
+import { SAMPLE_READING } from '../demo/sample';
+import { findSource, whenLabel } from '../lib/reading';
 
 export const Route = createFileRoute('/')({
-  component: RouteComponent,
+  component: EntryPage,
 });
 
-const MAX_FILES = 6;
+/** 右側に散らす見本の3枚（違う時期・違う人が、同じことを書いている） */
+const FLOATING = ['work-2', 'jhs-2', 'club-2'];
 
-type Status = 'idle' | 'reading' | 'done' | 'error';
+const floatStyles = [
+  'top-2 left-6 w-[310px] -rotate-[3.5deg]',
+  'top-[250px] left-24 w-[300px] rotate-[2.5deg]',
+  'top-[500px] left-[18px] w-[286px] -rotate-[1.5deg]',
+];
 
-function RouteComponent() {
-  const client = useExtractorClient();
-  const [files, setFiles] = useState<File[]>([]);
-  const [status, setStatus] = useState<Status>('idle');
-  const [result, setResult] = useState<Extraction | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+const STEPS = [
+  {
+    no: '01',
+    title: '読み込む',
+    body: 'もらった紙を撮るだけ。1人分ずつ自動で切り分けます。',
+  },
+  {
+    no: '02',
+    title: '捨てる',
+    body: '挨拶と定型句と内輪ネタを外します。',
+  },
+  {
+    no: '03',
+    title: '持ち出す',
+    body: '残った言葉を、書かれたままの字ごと持ち歩けるようにします。',
+  },
+];
 
-  const previews = useMemo(
-    () =>
-      files.map((f) => ({
-        key: f.name + f.lastModified,
-        name: f.name,
-        url: URL.createObjectURL(f),
-      })),
-    [files],
-  );
-  useEffect(
-    () => () => previews.forEach((p) => URL.revokeObjectURL(p.url)),
-    [previews],
-  );
-
-  const onSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files ?? []).slice(0, MAX_FILES);
-    setFiles(selected);
-    setResult(null);
-    setError(null);
-    setStatus('idle');
-  };
-
-  const onExtract = async () => {
-    setStatus('reading');
-    setError(null);
-    setResult(null);
-    try {
-      const images = await Promise.all(files.map(toImageInput));
-      for await (const chunk of client.invoke({ images })) {
-        if (chunk.type === 'result' && chunk.result) {
-          setResult(chunk.result);
-        }
-      }
-      setStatus('done');
-    } catch (e) {
-      console.error(e);
-      setError('読み取りに失敗しました。時間をおいてもう一度試してください。');
-      setStatus('error');
-    }
-  };
-
-  const onCopy = async () => {
-    if (!result) return;
-    await navigator.clipboard.writeText(toPlainText(result));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+function EntryPage() {
+  const floating = FLOATING.map((id) =>
+    SAMPLE_READING.fragments.find((f) => f.id === id),
+  ).filter((f) => f !== undefined);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">もちだす</h1>
-        <p className="text-muted-foreground">
-          自分を説明する言葉は、もう誰かが書いている。
-          <br />
-          寄せ書きやサンクスカードの写真から、その言葉だけを取り出します。
-        </p>
-      </header>
+    <div className="flex min-h-screen flex-col">
+      <SiteHeader>
+        <a
+          href="#how"
+          className="text-sm text-ink-4 no-underline hover:text-shu"
+        >
+          つかいかた
+        </a>
+        <Link
+          to="/upload"
+          className={`${primaryButton} h-11 px-[22px] text-sm`}
+        >
+          はじめる
+        </Link>
+      </SiteHeader>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>紙の写真を選ぶ（最大{MAX_FILES}枚）</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={onSelect}
-            className="text-sm file:mr-4 file:rounded-md file:border-0 file:bg-muted file:px-4 file:py-2 file:text-sm file:font-medium"
-          />
-          {files.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {previews.map((p) => (
-                <img
-                  key={p.key}
-                  src={p.url}
-                  alt={p.name}
-                  className="aspect-square w-full rounded-md border object-cover"
-                />
-              ))}
-            </div>
-          )}
-          <Button
-            onClick={onExtract}
-            disabled={files.length === 0 || status === 'reading'}
+      <main className="mx-auto flex w-full max-w-[1280px] flex-1 flex-col gap-12 px-6 pt-12 md:px-14 md:pt-[72px] lg:flex-row">
+        <div className="flex max-w-[600px] flex-col">
+          <span className="text-[13px] tracking-[0.18em] text-cha">
+            実家の押し入れと、引き出しの奥から
+          </span>
+          <h1 className="mt-5 font-mincho text-[38px] font-semibold leading-[1.42] tracking-[0.01em] md:text-[50px]">
+            自分を説明する言葉は、
+            <br />
+            もう誰かが
+            <br />
+            書いている。
+          </h1>
+          <p className="mt-7 max-w-[520px] text-base leading-loose text-ink-3">
+            卒業アルバムの寄せ書き。退職のときの色紙。職場でもらったサンクスカード。あなたについて他人が書いた紙は、たいてい実家に置いたままです。引っ越しにも、結婚にも、持ち出さないまま。
+          </p>
+          <div className="mt-9 flex flex-wrap items-center gap-6">
+            <Link to="/upload" className={`${primaryButton} h-14 text-base`}>
+              紙を読み込む
+            </Link>
+            <Link
+              to="/result"
+              className="text-[15px] text-ink-4 hover:text-shu"
+            >
+              サンプルの結果を見る
+            </Link>
+          </div>
+
+          <div
+            id="how"
+            className="mt-16 grid grid-cols-1 gap-5 border-t border-line pt-8 sm:grid-cols-3"
           >
-            {status === 'reading' ? (
-              <>
-                <Spinner /> 読み取り中…
-              </>
-            ) : (
-              '言葉を取り出す'
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {result && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <CardTitle>{result.sourceType}から取り出した言葉</CardTitle>
-            <Button variant="outline" size="sm" onClick={onCopy}>
-              {copied ? 'コピーしました' : 'テキストでコピー'}
-            </Button>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-6">
-            {result.keywords.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {result.keywords.map((k) => (
-                  <span
-                    key={k.word}
-                    className="rounded-full bg-primary px-3 py-1 text-sm text-primary-foreground"
-                  >
-                    {k.word}
-                    <span className="ml-1 opacity-70">×{k.count}</span>
-                  </span>
-                ))}
+            {STEPS.map((s) => (
+              <div key={s.no} className="flex flex-col gap-2">
+                <span className="font-mincho text-[15px] text-shu">{s.no}</span>
+                <span className="text-[15px] font-medium">{s.title}</span>
+                <span className="text-[13px] leading-[1.8] text-ink-4">
+                  {s.body}
+                </span>
               </div>
-            )}
-
-            {groupByTheme(result.phrases).map((group) => (
-              <section key={group.theme} className="flex flex-col gap-2">
-                <h2 className="text-sm font-semibold text-muted-foreground">
-                  {group.theme}
-                </h2>
-                <ul className="flex flex-col gap-3">
-                  {group.phrases.map((p, i) => (
-                    <li
-                      key={`${group.theme}-${i}`}
-                      className="border-l-4 border-primary/40 pl-3"
-                    >
-                      <p className="text-base">「{p.text}」</p>
-                      {p.writer && (
-                        <p className="text-sm text-muted-foreground">
-                          — {p.writer}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
             ))}
+          </div>
+        </div>
 
-            <p className="text-xs text-muted-foreground">
-              定型の挨拶など {result.excludedCount} 件を除外
-              {result.unreadableCount > 0 &&
-                ` ／ 判読できなかった箇所 ${result.unreadableCount} 件`}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        <div
+          className="relative hidden min-h-[680px] flex-1 lg:block"
+          aria-hidden="true"
+        >
+          {floating.map((f, i) => {
+            const s = findSource(SAMPLE_READING, f.sourceId);
+            return (
+              <div
+                key={f.id}
+                className={`absolute rounded-[2px] border border-edge bg-sheet px-7 py-[26px] shadow-[0_10px_28px_rgba(60,46,28,0.13)] ${floatStyles[i]}`}
+              >
+                <span className="text-[11px] tracking-[0.14em] text-ink-5">
+                  {s.label}　{whenLabel(s.yearsAgo)}
+                </span>
+                <p className="mt-3.5 font-mincho text-[15px] leading-[2.1] text-ink-2">
+                  {f.text}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+
+      <footer className="border-t border-line">
+        <div className="mx-auto flex h-14 max-w-[1280px] items-center px-6 md:px-14">
+          <span className="text-xs text-ink-4">
+            表示中のサンプルは、架空の人物「佐藤 陽」さんに宛てた寄せ書きです。
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }

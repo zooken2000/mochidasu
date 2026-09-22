@@ -1,10 +1,9 @@
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { useAuth } from 'react-oidc-context';
-import CognitoAuth from './components/CognitoAuth';
 import ExtractorProvider from './components/ExtractorProvider';
 import QueryClientProvider from './components/QueryClientProvider';
+import { ReadingProvider } from './components/ReadingProvider';
 import RuntimeConfigProvider from './components/RuntimeConfig';
 import { useRuntimeConfig } from './hooks/useRuntimeConfig';
 import { routeTree } from './routeTree.gen';
@@ -13,12 +12,11 @@ import './styles.css';
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type RouterProviderContext = {
   runtimeConfig?: ReturnType<typeof useRuntimeConfig>;
-  auth?: ReturnType<typeof useAuth>;
 };
 
 const router = createRouter({
   routeTree,
-  context: { runtimeConfig: undefined, auth: undefined },
+  context: { runtimeConfig: undefined },
 });
 
 // Register the router instance for type safety
@@ -29,9 +27,8 @@ declare module '@tanstack/react-router' {
 }
 
 const App = () => {
-  const auth = useAuth();
   const runtimeConfig = useRuntimeConfig();
-  return <RouterProvider router={router} context={{ runtimeConfig, auth }} />;
+  return <RouterProvider router={router} context={{ runtimeConfig }} />;
 };
 
 const root = document.getElementById('root');
@@ -39,13 +36,13 @@ root &&
   createRoot(root).render(
     <React.StrictMode>
       <RuntimeConfigProvider>
-        <CognitoAuth>
-          <QueryClientProvider>
-            <ExtractorProvider>
+        <QueryClientProvider>
+          <ExtractorProvider>
+            <ReadingProvider>
               <App />
-            </ExtractorProvider>
-          </QueryClientProvider>
-        </CognitoAuth>
+            </ReadingProvider>
+          </ExtractorProvider>
+        </QueryClientProvider>
       </RuntimeConfigProvider>
     </React.StrictMode>,
   );

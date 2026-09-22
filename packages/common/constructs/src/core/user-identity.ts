@@ -1,8 +1,4 @@
 import {
-  IdentityPool,
-  UserPoolAuthenticationProvider,
-} from 'aws-cdk-lib/aws-cognito-identitypool';
-import {
   CfnOutput,
   CfnResource,
   Duration,
@@ -10,6 +6,7 @@ import {
   RemovalPolicy,
   Stack,
 } from 'aws-cdk-lib';
+import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
 import {
   AccountRecovery,
   CfnManagedLoginBranding,
@@ -24,18 +21,21 @@ import {
   UserPoolDomain,
 } from 'aws-cdk-lib/aws-cognito';
 import {
+  IdentityPool,
+  UserPoolAuthenticationProvider,
+} from 'aws-cdk-lib/aws-cognito-identitypool';
+import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Key } from 'aws-cdk-lib/aws-kms';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import {
   CfnLoggingConfiguration,
   CfnWebACL,
   CfnWebACLAssociation,
 } from 'aws-cdk-lib/aws-wafv2';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { Key } from 'aws-cdk-lib/aws-kms';
-import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { RuntimeConfig } from './runtime-config.js';
-import { Distribution } from 'aws-cdk-lib/aws-cloudfront';
-import { findCloudFrontDomainNames } from './cloudfront.js';
 import { suppressRules } from './checkov.js';
+import { findCloudFrontDomainNames } from './cloudfront.js';
+import { RuntimeConfig } from './runtime-config.js';
 
 const WEB_CLIENT_ID = 'WebClient';
 
@@ -65,6 +65,14 @@ export interface UserIdentityProps {
    * @default { sms: true, otp: true }
    */
   readonly mfaSecondFactor?: MfaSecondFactor;
+
+  /**
+   * The Cognito feature plan. PLUS enables threat protection (billed per MAU);
+   * ESSENTIALS keeps managed login and has a free tier.
+   *
+   * @default FeaturePlan.PLUS
+   */
+  readonly featurePlan?: FeaturePlan;
 }
 
 /**
@@ -87,6 +95,7 @@ export class UserIdentity extends Construct {
       enableWaf = true,
       mfa = Mfa.REQUIRED,
       mfaSecondFactor = { sms: true, otp: true },
+      featurePlan = FeaturePlan.PLUS,
     }: UserIdentityProps = {},
   ) {
     super(scope, id);
@@ -98,7 +107,7 @@ export class UserIdentity extends Construct {
     }
 
     this.region = Stack.of(this).region;
-    this.userPool = this.createUserPool(mfa, mfaSecondFactor);
+    this.userPool = this.createUserPool(mfa, mfaSecondFactor, featurePlan);
 
     if (enableWaf) {
       this.webAcl = this.createWebAcl(
@@ -146,7 +155,11 @@ export class UserIdentity extends Construct {
     });
   }
 
-  private createUserPool = (mfa: Mfa, mfaSecondFactor: MfaSecondFactor) => {
+  private createUserPool = (
+    mfa: Mfa,
+    mfaSecondFactor: MfaSecondFactor,
+    featurePlan: FeaturePlan,
+  ) => {
     // Cognito rejects SmsConfiguration (emitted whenever phone is auto-verified) unless SMS is
     // also an enabled MFA method, for any non-OFF MfaConfiguration. So phone verification via SMS
     // can only be offered when SMS is actually usable as a second factor.
@@ -163,9 +176,13 @@ export class UserIdentity extends Construct {
         tempPasswordValidity: Duration.days(3),
       },
       mfa,
-      featurePlan: FeaturePlan.PLUS,
+      featurePlan,
+      // Threat protection is only available on the PLUS plan.
       // Audit-only logs threat assessments without blocking sign-in. Switch to FULL_FUNCTION to enforce automatic responses.
-      standardThreatProtectionMode: StandardThreatProtectionMode.AUDIT_ONLY,
+      standardThreatProtectionMode:
+        featurePlan === FeaturePlan.PLUS
+          ? StandardThreatProtectionMode.AUDIT_ONLY
+          : undefined,
       mfaSecondFactor,
       signInCaseSensitive: false,
       signInAliases: { username: true, email: true },

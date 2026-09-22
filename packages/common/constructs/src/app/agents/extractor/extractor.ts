@@ -1,38 +1,21 @@
-import { Fn, Lazy, Names, RemovalPolicy, Stack } from 'aws-cdk-lib';
-import { Connections, IConnectable } from 'aws-cdk-lib/aws-ec2';
-import {
-  BlockPublicAccess,
-  Bucket,
-  BucketEncryption,
-} from 'aws-cdk-lib/aws-s3';
-import { Key } from 'aws-cdk-lib/aws-kms';
-import {
-  CfnDelivery,
-  CfnDeliveryDestination,
-  CfnDeliverySource,
-  LogGroup,
-  RetentionDays,
-} from 'aws-cdk-lib/aws-logs';
-import { Construct } from 'constructs';
-import * as path from 'path';
-import * as url from 'url';
+import { Fn, Lazy, Names, Stack } from 'aws-cdk-lib';
 import {
   AgentCoreRuntime,
   AgentRuntimeArtifact,
   ProtocolType,
   Runtime,
   RuntimeProps,
-  RuntimeAuthorizerConfiguration,
 } from 'aws-cdk-lib/aws-bedrockagentcore';
+import { Connections, IConnectable } from 'aws-cdk-lib/aws-ec2';
 import {
-  PolicyStatement,
-  Effect,
-  ServicePrincipal,
+  Grant,
   IGrantable,
   IPrincipal,
+  PolicyStatement,
 } from 'aws-cdk-lib/aws-iam';
-import { IUserPool, IUserPoolClient } from 'aws-cdk-lib/aws-cognito';
-import { suppressRules } from '../../../core/checkov.js';
+import { Construct } from 'constructs';
+import * as path from 'path';
+import * as url from 'url';
 import { RuntimeConfig } from '../../../core/runtime-config.js';
 import { findWorkspaceRoot } from '../../../core/workspace.js';
 
@@ -42,23 +25,7 @@ export type ExtractorProps = Omit<
   | 'protocolConfiguration'
   | 'agentRuntimeArtifact'
   | 'authorizerConfiguration'
-> & {
-  /**
-   * Identity details for Cognito Authentication
-   */
-  identity: {
-    userPool: IUserPool;
-    userPoolClient: IUserPoolClient;
-  };
-  /**
-   * Removal policy for the session bucket holding the agent's conversation
-   * history. Defaults to retaining it so a stack `destroy` doesn't silently
-   * delete session data — set to `RemovalPolicy.DESTROY` for sandbox/CI teardown.
-   *
-   * @default RemovalPolicy.RETAIN
-   */
-  readonly sessionBucketRemovalPolicy?: RemovalPolicy;
-};
+>;
 
 export class Extractor extends Construct implements IGrantable, IConnectable {
   public readonly code: AgentRuntimeArtifact;
@@ -66,9 +33,9 @@ export class Extractor extends Construct implements IGrantable, IConnectable {
   /** Default Gateway target name for this agent. */
   public readonly agentName = 'extractor';
   /** Inbound auth — a fronting Gateway uses this to pick its outbound credential. */
-  public readonly auth = 'cognito';
+  public readonly auth = 'iam';
 
-  constructor(scope: Construct, id: string, props: ExtractorProps) {
+  constructor(scope: Construct, id: string, props?: ExtractorProps) {
     super(scope, id);
 
     const rc = RuntimeConfig.ensure(this);
@@ -88,117 +55,6 @@ export class Extractor extends Construct implements IGrantable, IConnectable {
       entrypoint: ['opentelemetry-instrument', 'main.py'],
     });
 
-    const {
-      identity,
-      sessionBucketRemovalPolicy = RemovalPolicy.RETAIN,
-      ...restProps
-    } = props ?? {};
-
-    const sessionKey = new Key(this, 'SessionKey', {
-      enableKeyRotation: true,
-    });
-
-    // Allow CloudWatch Logs to use the session key for server access log delivery.
-    const stack = Stack.of(this);
-    sessionKey.addToResourcePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        principals: [
-          new ServicePrincipal(`logs.${stack.region}.amazonaws.com`),
-        ],
-        actions: [
-          'kms:Encrypt',
-          'kms:Decrypt',
-          'kms:ReEncrypt*',
-          'kms:GenerateDataKey*',
-          'kms:DescribeKey',
-        ],
-        resources: ['*'],
-        conditions: {
-          ArnLike: {
-            'kms:EncryptionContext:aws:logs:arn': `arn:aws:logs:${stack.region}:${stack.account}:log-group:*`,
-          },
-        },
-      }),
-    );
-
-    const sessionAccessLogs = new LogGroup(this, 'SessionAccessLogs', {
-      retention: RetentionDays.ONE_YEAR,
-      encryptionKey: sessionKey,
-      removalPolicy: RemovalPolicy.DESTROY,
-    });
-
-    const sessionBucket = new Bucket(this, 'SessionBucket', {
-      enforceSSL: true,
-      removalPolicy: sessionBucketRemovalPolicy,
-      encryption: BucketEncryption.KMS,
-      encryptionKey: sessionKey,
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-    });
-    suppressRules(
-      sessionBucket,
-      ['CKV_AWS_21'],
-      'Session data does not need versioning enabled',
-    );
-    suppressRules(
-      sessionBucket,
-      ['CKV2_AWS_61'],
-      'Lifecycle configuration not required for session data',
-    );
-    suppressRules(
-      sessionBucket,
-      ['CKV_AWS_144'],
-      'Cross-region replication not required for session data',
-    );
-    suppressRules(
-      sessionBucket,
-      ['CKV2_AWS_62'],
-      'Event notifications not required for session data',
-    );
-    suppressRules(
-      sessionBucket,
-      ['CKV_AWS_18'],
-      'Server access logs are delivered to CloudWatch Logs',
-    );
-
-    const sessionAccessLogsSource: CfnDeliverySource = new CfnDeliverySource(
-      this,
-      'SessionAccessLogsSource',
-      {
-        name: Lazy.string({
-          produce: () =>
-            Names.uniqueResourceName(sessionAccessLogsSource, {
-              maxLength: 60,
-            }),
-        }),
-        logType: 'S3_SERVER_ACCESS_LOGS',
-        resourceArn: sessionBucket.bucketArn,
-      },
-    );
-    const sessionBucketPolicy = sessionBucket.policy;
-    if (sessionBucketPolicy) {
-      sessionAccessLogsSource.node.addDependency(sessionBucketPolicy);
-    }
-    const sessionAccessLogsDestination: CfnDeliveryDestination =
-      new CfnDeliveryDestination(this, 'SessionAccessLogsDestination', {
-        name: Lazy.string({
-          produce: () =>
-            Names.uniqueResourceName(sessionAccessLogsDestination, {
-              maxLength: 60,
-            }),
-        }),
-        destinationResourceArn: sessionAccessLogs.logGroupArn,
-      });
-    const sessionAccessLogsDelivery = new CfnDelivery(
-      this,
-      'SessionAccessLogsDelivery',
-      {
-        deliverySourceName: sessionAccessLogsSource.name,
-        deliveryDestinationArn: sessionAccessLogsDestination.attrArn,
-      },
-    );
-    sessionAccessLogsDelivery.addDependency(sessionAccessLogsSource);
-
     this.agentCoreRuntime = new Runtime(this, 'Extractor', {
       runtimeName: Lazy.string({
         produce: () =>
@@ -206,18 +62,10 @@ export class Extractor extends Construct implements IGrantable, IConnectable {
       }),
       protocolConfiguration: ProtocolType.HTTP,
       agentRuntimeArtifact: this.code,
-      authorizerConfiguration: RuntimeAuthorizerConfiguration.usingCognito(
-        identity.userPool,
-        [identity.userPoolClient],
-      ),
-      // Receive the caller's Authorization header (validated by the authorizer).
-      requestHeaderConfiguration: {
-        allowlistedHeaders: ['Authorization'],
-      },
-      ...restProps,
+      ...props,
       environmentVariables: {
         RUNTIME_CONFIG_APP_ID: rc.appConfigApplicationId,
-        ...restProps?.environmentVariables,
+        ...props?.environmentVariables,
       },
     });
 
@@ -235,17 +83,12 @@ export class Extractor extends Construct implements IGrantable, IConnectable {
       }),
     );
 
-    sessionBucket.grantReadWrite(this.agentCoreRuntime);
-
     rc.grantReadAppConfig(this.agentCoreRuntime);
 
     rc.set('agentcore', 'agentRuntimes', {
       ...rc.get('agentcore').agentRuntimes,
       Extractor: {
         arn: this.agentCoreRuntime.agentRuntimeArn,
-        session: {
-          bucketName: sessionBucket.bucketName,
-        },
       },
     });
 
@@ -283,5 +126,23 @@ export class Extractor extends Construct implements IGrantable, IConnectable {
       ),
     );
     return `https://bedrock-agentcore.${Stack.of(this).region}.amazonaws.com/runtimes/${encodedArn}/invocations?qualifier=DEFAULT`;
+  }
+
+  /**
+   * Grants IAM permissions to invoke this agent runtime.
+   *
+   * @param grantee - The IAM principal to grant permissions to
+   */
+  public grantInvokeAccess(grantee: IGrantable) {
+    this.agentCoreRuntime.grantInvoke(grantee);
+
+    Grant.addToPrincipal({
+      grantee,
+      actions: ['bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream'],
+      resourceArns: [
+        this.agentCoreRuntime.agentRuntimeArn,
+        `${this.agentCoreRuntime.agentRuntimeArn}/*`,
+      ],
+    });
   }
 }

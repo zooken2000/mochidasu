@@ -1,32 +1,3 @@
 # @mochidasu/common-shadcn
 
-This package centralises Shadcn UI components that are shared between your React websites.
-
-- Components live under `packages/common/shadcn/src/components`
-- Utilities live under `packages/common/shadcn/src/lib`
-- Hooks live under `packages/common/shadcn/src/hooks`
-- Global styles are defined in `packages/common/shadcn/src/styles/globals.css`
-
-This package contains a `components.json`, so you can add new components by running the following from `packages/common/shadcn`:
-
-With npm:
-```bash
-npx shadcn@latest add <component>
-```
-
-With pnpm:
-```bash
-pnpm dlx shadcn@latest add <component>
-```
-
-With yarn:
-```bash
-yarn shadcn@latest add <component>
-```
-
-With bun:
-```bash
-bunx --bun shadcn@latest add <component>
-```
-
-Running from this directory means any dependencies a component needs are installed into this package's `package.json`.
+Shared shadcn/ui components and the base Tailwind stylesheet (`src/styles/globals.css`). App-specific colors and fonts (for example `shu` and `kinari`) are defined in `packages/web/src/styles.css`.

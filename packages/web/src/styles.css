@@ -1,2 +1,35 @@
 @import '../../common/shadcn/src/styles/globals.css';
 @source './**/*.{ts,tsx}';
+
+/* もちだす の配色・書体（デザイン: ../../../design/README.md） */
+@theme {
+  --color-paper: #f4efe4;
+  --color-sheet: #fcfaf4;
+  --color-kinari: #efe7d8;
+  --color-edge: #e3daca;
+  --color-line: #ded5c4;
+  --color-line-strong: #c5b9a3;
+  --color-ink: #1e1a15;
+  --color-ink-2: #2a2520;
+  --color-ink-3: #4a4238;
+  --color-ink-4: #5e564a;
+  --color-ink-5: #8a8073;
+  --color-shu: #b4442e;
+  --color-shu-dark: #8e3524;
+  --color-cha: #8a5a3b;
+  --color-ok-bg: #e4eaf0;
+  --color-ok-fg: #2f4260;
+  --color-warn-bg: #f6e3c8;
+  --color-warn-fg: #7a5218;
+  --font-mincho: 'Zen Old Mincho', serif;
+  --font-gothic: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+  --font-hand: 'Klee One', 'Zen Kurenaido', sans-serif;
+}
+
+@layer base {
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-gothic);
+  }
+}

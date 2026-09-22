@@ -1,6 +1,6 @@
 """入出力のスキーマ定義。
 
-エージェントが返す構造化データと、Web から受け取る画像入力の型をここにまとめる。
+Web から受け取る素材（写真・貼り付けた文章）と、エージェントが返す構造化データの型をここにまとめる。
 """
 
 import base64
@@ -14,10 +14,19 @@ ImageFormat = Literal["png", "jpeg", "webp", "gif"]
 # Bedrock の画像1枚あたりの上限 (3.75MB) に合わせる。base64 は元サイズの約4/3。
 MAX_IMAGE_BYTES = 3_750_000
 MAX_IMAGES = 6
+MAX_TEXTS = 20
+MAX_TEXT_CHARS = 2000
 
 
-class ImageInput(BaseModel):
-    """ブラウザから送られる画像1枚 (base64)。"""
+class SourceMeta(BaseModel):
+    """素材1つ分の付帯情報（ユーザーが入力する）。"""
+
+    label: str = Field(default="", max_length=60, description="紙の種類や出どころ（例: 中学の卒業寄せ書き）")
+    years_ago: int = Field(default=0, ge=0, le=80, description="何年前にもらったか（今年 = 0）")
+
+
+class ImageInput(SourceMeta):
+    """ブラウザから送られる写真1枚 (base64)。"""
 
     format: ImageFormat
     data: str = Field(description="base64 エンコードされた画像データ (data URL の接頭辞なし)")
@@ -37,30 +46,37 @@ class ImageInput(BaseModel):
         return base64.b64decode(self.data)
 
 
-Theme = Literal["人柄", "仕事ぶり", "関わり方", "強み", "感謝", "その他"]
+class TextInput(SourceMeta):
+    """貼り付けた最近の言葉（ピアボーナス・Slack の感謝など）。"""
+
+    text: str = Field(min_length=1, max_length=MAX_TEXT_CHARS)
 
 
-class Phrase(BaseModel):
-    """紙から取り出した、本人を説明する一節。"""
-
-    text: str = Field(description="紙に書かれた言葉を原文のまま。要約・言い換えはしない")
-    writer: str | None = Field(default=None, description="署名があれば書き手の名前。無ければ null")
-    theme: Theme = Field(description="この言葉が本人のどんな面を説明しているか")
-    reason: str = Field(description="なぜ本人を説明する言葉と判断したか (1文)")
+# ---- エージェントの出力 ----
 
 
-class Keyword(BaseModel):
-    """複数の書き手に共通して現れる、本人を表す短い言葉。"""
+class Fragment(BaseModel):
+    """1人分（1通分）のメッセージ。残すものも捨てるものも全部返す。"""
 
-    word: str = Field(description="本人を表す短い言葉 (例: 「最後までやりきる」)")
-    count: int = Field(ge=1, description="この特徴に触れている Phrase の数")
+    source: int = Field(ge=0, description="何番目の素材から読んだか（【素材N】の N）")
+    text: str = Field(description="書かれた言葉を原文のまま。要約・言い換え・誤字の修正はしない")
+    writer: str | None = Field(default=None, description="署名が読めれば書き手の名前。無ければ null")
+    keep: bool = Field(description="本人の人柄・行動・関わり方を具体的に書いているなら true")
+    reason: str = Field(description="残す／捨てる理由を1文で")
+    confidence: Literal["high", "partial"] = Field(description="読み取りの自信。一部読めない字があれば partial")
+
+
+class Trait(BaseModel):
+    """複数の書き手が、別々に触れている本人の特徴。"""
+
+    label: str = Field(description="本人を表す短い言葉（例: 最後まで持ち場を離れない）")
+    fragment_indexes: list[int] = Field(description="根拠になる fragments の番号（0始まり）")
+    questions: list[str] = Field(description="本人が最近の経験を思い出すための問いかけ（2〜3個）")
 
 
 class Extraction(BaseModel):
     """1回の読み取り結果。"""
 
-    source_type: str = Field(description="紙の種類の推定 (サンクスカード / 退職色紙 / 卒業寄せ書き など)")
-    phrases: list[Phrase] = Field(description="本人を説明する言葉だけを残したもの")
-    keywords: list[Keyword] = Field(description="phrases に繰り返し現れる特徴。多い順に最大5件")
-    excluded_count: int = Field(ge=0, description="定型の挨拶・内輪ネタ等として除外したメッセージの数")
+    fragments: list[Fragment]
+    traits: list[Trait] = Field(description="2人以上が別々に触れている特徴だけ。多い順に最大4つ")
     unreadable_count: int = Field(ge=0, description="判読できず読み飛ばした箇所の数")

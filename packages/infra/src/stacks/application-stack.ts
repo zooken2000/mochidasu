@@ -1,23 +1,29 @@
-import { Extractor, UserIdentity, Web } from '@mochidasu/common-constructs';
-import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
-import { Mfa } from 'aws-cdk-lib/aws-cognito';
+import {
+  Extractor,
+  GuestIdentity,
+  suppressRules,
+  Web,
+} from '@mochidasu/common-constructs';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 export class ApplicationStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    // ハッカソンのデモ用途なので MFA は任意にしておく
-    const identity = new UserIdentity(this, 'Identity', {
-      mfa: Mfa.OPTIONAL,
-    });
+    // ログインなし: ゲスト ID でブラウザから AgentCore を呼ぶ（IAM 認証）
+    const guest = new GuestIdentity(this, 'Guest');
 
-    // 読み取った紙の画像・会話履歴を保持するため、スタック削除時にバケットも消す
-    new Extractor(this, 'Extractor', {
-      identity,
-      sessionBucketRemovalPolicy: RemovalPolicy.DESTROY,
-    });
+    // 会話履歴は保存しない（in-memory）。写真はリクエストの処理にだけ使う
+    const extractor = new Extractor(this, 'Extractor');
+    extractor.grantInvokeAccess(guest.guestRole);
 
-    new Web(this, 'Web');
+    // ハッカソン用に費用を抑えるため WAF は付けない
+    const web = new Web(this, 'Web', { enableWaf: false });
+    suppressRules(
+      web.cloudFrontDistribution,
+      ['CKV_AWS_68'],
+      'ハッカソン用に費用を抑えるため WAF を付けない',
+    );
   }
 }
