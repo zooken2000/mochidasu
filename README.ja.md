@@ -6,9 +6,11 @@
 
 もちだすは、その写真から「**時期も場所も違う人たちが、別々に同じことを書いていた**」特徴を取り出します。本人が当たり前すぎて、自己紹介には書かないような特徴です。取り出す言葉はすべて原文のままで、AI が本人を言い換えて評価することはありません。
 
-AWS Builder Center「Zero to Shipped」ハッカソンの応募作です（`#personal-expression`・`#startup`、締切 2026-10-02 23:59 PDT）。
+AWS Builder Center「Zero to Shipped」ハッカソンの応募作です。
 
-**試す：** https://d1x77t2z0ibnhe.cloudfront.net/ （ログインなし）・サンプルの結果：https://d1x77t2z0ibnhe.cloudfront.net/sample
+**試す（ログインなし）：** [アプリ](https://d1x77t2z0ibnhe.cloudfront.net/?lang=ja)・[サンプルの結果](https://d1x77t2z0ibnhe.cloudfront.net/sample?lang=ja)・[使い方](https://d1x77t2z0ibnhe.cloudfront.net/how?lang=ja)
+
+![入口の画面](docs/screenshots/entry-ja.png)
 
 画面は日本語と英語に対応しています（右上のボタン、または URL に `?lang=ja` / `?lang=en`）。引用は、書かれた言葉のまま翻訳しません。
 
@@ -20,6 +22,8 @@ AWS Builder Center「Zero to Shipped」ハッカソンの応募作です（`#per
 2. **捨てる**：Amazon Bedrock の Claude が1人分ずつに分け、具体的な言葉だけを残します。定型の挨拶や内輪ネタは外します。
 3. **つなぐ**：**2人以上が別々に触れている特徴**を「あなたが当たり前だと思っていること」として出します。根拠の引用を時期の古い順に並べ、最近の似た経験を思い出すための問いかけを添えます。強みの候補の名前と問いかけは画面の言語で書き、引用は翻訳しません。
 4. **持ち出す**：残した言葉を、いつ・どの紙かを付けたテキストとしてコピーします。
+
+![強みの候補と根拠の引用、自分に聞いてみること（英語表示）](docs/screenshots/result-traits.png)
 
 サンプルは、架空の人物「佐藤 陽」さん宛の寄せ書きやカード5種です（41件のうち10件を残す）。トップの「サンプルの結果を見る」（`/sample`）から、ログインなしで見られます。使い方の説明は `/how` にあります。
 
@@ -111,6 +115,7 @@ docs/
   decisions.md         決めたことと理由
   development.md       開発・デプロイ・トラブル対応
   architecture/        構成図（日・英）
+  screenshots/         画面のスクリーンショット（架空のサンプル）
 ```
 
 ## 8. この先

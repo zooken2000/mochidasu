@@ -6,11 +6,13 @@ Yearbook messages, farewell boards and thank-you cards are full of things other 
 
 **mochidasu** reads photos of those papers and pulls out what you would never write about yourself: traits that **different people, years apart, kept pointing out**. Every line is quoted word for word. The AI never describes you in its own words.
 
-Built for the AWS Builder Center **Zero to Shipped** hackathon · `#personal-expression` · `#startup`
+Built for the AWS Builder Center **Zero to Shipped** hackathon.
 
 日本語の説明は [README.ja.md](README.ja.md) にあります。
 
-**Try it:** https://d1x77t2z0ibnhe.cloudfront.net/?lang=en (no sign-in) · Sample result: https://d1x77t2z0ibnhe.cloudfront.net/sample?lang=en
+**Try it (no sign-in):** [Live demo](https://d1x77t2z0ibnhe.cloudfront.net/?lang=en) · [Sample result](https://d1x77t2z0ibnhe.cloudfront.net/sample?lang=en) · [How it works](https://d1x77t2z0ibnhe.cloudfront.net/how?lang=en)
+
+![Entry page](docs/screenshots/entry.png)
 
 The UI is available in English and Japanese (switch at the top right, or add `?lang=en` / `?lang=ja` to the URL). Quotes always stay in the language they were written in.
 
@@ -18,12 +20,18 @@ The UI is available in English and Japanese (switch at the top right, or add `?l
 
 ## What it does
 
+![Upload page](docs/screenshots/upload.png)
+
 1. **Read.** Upload photos of message boards or cards (JPEG or PNG, up to 6; iPhone HEIC photos work in Safari). For each one, enter what it is and how many years ago you got it. You can also paste recent messages, such as peer-bonus notes or Slack thanks.
 2. **Filter.** Claude on Amazon Bedrock splits the messages by person and keeps only the specific ones. Greetings, set phrases and inside jokes are dropped.
 3. **Connect.** Traits mentioned by **two or more different writers** become *"things you take for granted"*. Each one shows the original quotes in time order, plus a few questions that help you recall a recent example of your own. The trait labels and questions are written in the UI language; the quotes are never translated.
 4. **Copy.** One click copies the kept quotes, with when and where each came from, as plain text.
 
 Example from the built-in sample: in the notes to a fictional person, a middle-school classmate (8 years ago), a club friend (4 years ago), a coworker's thank-you card (3 years ago) and a farewell board (this year) all describe the same trait in different words: *"stays until the job is done."*
+
+![Traits with the original quotes, in time order, and questions to ask yourself](docs/screenshots/result-traits.png)
+
+![The kept messages, quoted word for word](docs/screenshots/result-messages.png)
 
 ## What it deliberately does not do
 
@@ -91,6 +99,7 @@ docs/
   decisions.md         Design decisions and why (Japanese)
   development.md       Local dev, deploy, troubleshooting (Japanese)
   architecture/        Architecture diagrams
+  screenshots/         Screenshots of the app (fictional sample data)
 ```
 
 ## Roadmap
